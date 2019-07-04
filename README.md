@@ -1,5 +1,7 @@
 # perspective-transform
 
+![screen-shot](https://raw.githubusercontent.com/tdkn/perspective-transform/master/src/assets/screenshot.jpg)
+
 ## Project setup
 ```
 npm install
