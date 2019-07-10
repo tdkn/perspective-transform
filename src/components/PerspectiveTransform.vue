@@ -8,9 +8,8 @@
 <script>
 import * as THREE from "three";
 import { DragControls } from "three/examples/jsm/controls/DragControls";
-import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import TweakPane from "tweakpane";
-import perspective from "perspective-transform";
+import { getPerspectiveTransform } from "../lib/perspective-transform";
 import image from "../assets/clock.jpg";
 
 export default {
@@ -35,14 +34,23 @@ export default {
       far: 1000
     },
     cornerMeshes: [],
-    orbitControls: null
+    polyline: null
   }),
+  computed: {
+    positions() {
+      return this.cornerMeshes.map(mesh => ({
+        x: mesh.position.x,
+        y: mesh.position.y
+      }));
+    }
+  },
   mounted() {
     this.createRenderer();
     this.createScene();
     this.createCamera();
     this.createImageMesh();
     this.createCornerMesh();
+    this.createPolyline();
     this.createHelper();
     this.createTweakPane();
     this.render();
@@ -92,7 +100,7 @@ export default {
 
       const { width, height } = this.canvasSize;
       const imageMesh = new THREE.Mesh(
-        new THREE.BoxGeometry(width, height, 1),
+        new THREE.BoxGeometry(width, height, 0),
         new THREE.MeshBasicMaterial({ map: texture })
       );
 
@@ -115,7 +123,7 @@ export default {
 
       positions.forEach(([x, y]) => {
         const cornerMesh = new THREE.Mesh(
-          new THREE.BoxGeometry(10, 10, 0),
+          new THREE.CircleGeometry(5, 32),
           new THREE.MeshBasicMaterial({ color: "#00ff00" })
         );
 
@@ -124,6 +132,38 @@ export default {
         this.cornerMeshes.push(cornerMesh);
         this.sceneOfOriginal.add(cornerMesh);
       });
+    },
+    createPolyline() {
+      const material = new THREE.LineBasicMaterial({
+        color: 0x00ff00
+      });
+
+      const geometry = new THREE.Geometry();
+      geometry.vertices.push(
+        new THREE.Vector3(-100, -100, 1),
+        new THREE.Vector3(100, -100, 1),
+        new THREE.Vector3(100, 100, 1),
+        new THREE.Vector3(-100, 100, 1),
+        new THREE.Vector3(-100, -100, 1)
+      );
+
+      this.polyline = new THREE.Line(geometry, material);
+      this.sceneOfOriginal.add(this.polyline);
+    },
+    updatePosition() {
+      this.positions.forEach(({ x, y }, index) => {
+        if (index !== 0) {
+          this.polyline.geometry.vertices[index].setX(x);
+          this.polyline.geometry.vertices[index].setY(y);
+        } else {
+          const lastIndex = this.polyline.geometry.vertices.length - 1;
+          this.polyline.geometry.vertices[index].setX(x);
+          this.polyline.geometry.vertices[index].setY(y);
+          this.polyline.geometry.vertices[lastIndex].setX(x);
+          this.polyline.geometry.vertices[lastIndex].setY(y);
+        }
+      });
+      this.polyline.geometry.verticesNeedUpdate = true;
     },
     applyTransform() {
       const srcPts = this.cornerMeshes.reduce((points, mesh) => {
@@ -143,27 +183,12 @@ export default {
         -w, h // top left
       ];
 
-      // Get the coefficience for a perspective transform mapping from the source (TV screen corners) to the destination (entire viewport)
-      const { coeffs } = perspective(srcPts, destPts);
-      const [a1, a2, a3, b1, b2, b3, c1, c2, c3] = coeffs;
-
-      // Create a 4x4 transformation matrix.
-      // Transform x and y coordinate, but leave the z coordinates of the homogeneous coordinate vectors alone
-      const transformMatrix = new THREE.Matrix4();
-
-      // prettier-ignore
-      transformMatrix.set(
-        a1, a2, 0, a3,
-        b1, b2, 0, b3,
-        0, 0, 1, 0,
-        c1, c2, 0, c3
-      );
-
       // Apply the transform to the preview image mesh
-      this.previewMesh.matrix = transformMatrix;
+      this.previewMesh.matrix = getPerspectiveTransform(srcPts, destPts);
       this.previewMesh.matrixAutoUpdate = false;
     },
     render() {
+      this.updatePosition();
       this.applyTransform();
 
       this.rendererOfOriginal.render(
@@ -175,13 +200,6 @@ export default {
       requestAnimationFrame(this.render);
     },
     createHelper() {
-      // OrbitControls
-      this.orbitControls = new OrbitControls(
-        this.cameraOfOriginal,
-        this.rendererOfOriginal.domElement
-      );
-      this.orbitControls.enabled = false;
-
       // DragControls
       new DragControls(
         this.cornerMeshes,
@@ -203,13 +221,7 @@ export default {
         folder.addInput(this.cameraOfOriginal.position, "z");
       };
 
-      const setupOrbitControls = () => {
-        const folder = pane.addFolder({ title: "OrbitControls" });
-        folder.addInput(this.orbitControls, "enabled");
-      };
-
       setupPerspectiveCamera();
-      setupOrbitControls();
     }
   }
 };
