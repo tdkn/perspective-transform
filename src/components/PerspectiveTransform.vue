@@ -34,14 +34,23 @@ export default {
       far: 1000
     },
     cornerMeshes: [],
-    polyline: null
+    positions: [
+      new THREE.Vector3(-100, -100, 1),
+      new THREE.Vector3(100, -100, 1),
+      new THREE.Vector3(100, 100, 1),
+      new THREE.Vector3(-100, 100, 1)
+    ],
+    planeMesh: null,
+    lineSegments: null
   }),
   computed: {
-    positions() {
-      return this.cornerMeshes.map(mesh => ({
-        x: mesh.position.x,
-        y: mesh.position.y
-      }));
+    namedPosition() {
+      return {
+        topLeft: this.positions[3],
+        topRight: this.positions[2],
+        bottomLeft: this.positions[0],
+        bottomRight: this.positions[1]
+      };
     }
   },
   mounted() {
@@ -50,7 +59,7 @@ export default {
     this.createCamera();
     this.createImageMesh();
     this.createCornerMesh();
-    this.createPolyline();
+    this.createPlaneMesh();
     this.createHelper();
     this.createTweakPane();
     this.render();
@@ -112,62 +121,64 @@ export default {
     },
     createCornerMesh() {
       // Create four meshes to show the corner points
-
-      // prettier-ignore
-      const positions = [
-        [-100, -100],  // bottom-left
-        [100, -100],   // bottom-right
-        [100, 100],    // top-right
-        [-100, 100]    // top-left
-      ];
-
-      positions.forEach(([x, y]) => {
+      this.positions.forEach(position => {
         const cornerMesh = new THREE.Mesh(
-          new THREE.CircleGeometry(5, 32),
-          new THREE.MeshBasicMaterial({ color: "#00ff00" })
+          new THREE.PlaneGeometry(10, 10, 1),
+          new THREE.MeshBasicMaterial({
+            color: "#00ff00",
+            side: THREE.DoubleSide
+          })
         );
 
-        cornerMesh.position.set(x, y, 1);
+        cornerMesh.position.copy(position);
 
         this.cornerMeshes.push(cornerMesh);
         this.sceneOfOriginal.add(cornerMesh);
       });
     },
-    createPolyline() {
-      const material = new THREE.LineBasicMaterial({
-        color: 0x00ff00
+    createPlaneMesh() {
+      const geometry = new THREE.PlaneGeometry(200, 200, 1);
+      const edges = new THREE.EdgesGeometry(geometry);
+      const meshMaterial = new THREE.MeshBasicMaterial({
+        color: "#ffffff",
+        side: THREE.DoubleSide,
+        opacity: 0.5,
+        transparent: true
+      });
+      const lineMaterial = new THREE.LineBasicMaterial({
+        color: "#00ff00"
       });
 
-      const geometry = new THREE.Geometry();
-      geometry.vertices.push(
-        new THREE.Vector3(-100, -100, 1),
-        new THREE.Vector3(100, -100, 1),
-        new THREE.Vector3(100, 100, 1),
-        new THREE.Vector3(-100, 100, 1),
-        new THREE.Vector3(-100, -100, 1)
-      );
+      this.planeMesh = new THREE.Mesh(geometry, meshMaterial);
+      this.lineSegments = new THREE.LineSegments(edges, lineMaterial);
 
-      this.polyline = new THREE.Line(geometry, material);
-      this.sceneOfOriginal.add(this.polyline);
+      this.sceneOfOriginal.add(this.planeMesh);
+      this.sceneOfOriginal.add(this.lineSegments);
     },
-    updatePosition() {
-      this.positions.forEach(({ x, y }, index) => {
-        if (index !== 0) {
-          this.polyline.geometry.vertices[index].setX(x);
-          this.polyline.geometry.vertices[index].setY(y);
-        } else {
-          const lastIndex = this.polyline.geometry.vertices.length - 1;
-          this.polyline.geometry.vertices[index].setX(x);
-          this.polyline.geometry.vertices[index].setY(y);
-          this.polyline.geometry.vertices[lastIndex].setX(x);
-          this.polyline.geometry.vertices[lastIndex].setY(y);
-        }
+    syncPositions() {
+      const { topLeft, topRight, bottomLeft, bottomRight } = this.namedPosition;
+
+      // Positions
+      this.cornerMeshes.forEach((mesh, index) => {
+        this.positions[index].copy(mesh.position);
       });
-      this.polyline.geometry.verticesNeedUpdate = true;
+
+      // Plane
+      this.planeMesh.geometry.vertices[0].copy(topLeft);
+      this.planeMesh.geometry.vertices[1].copy(topRight);
+      this.planeMesh.geometry.vertices[2].copy(bottomLeft);
+      this.planeMesh.geometry.vertices[3].copy(bottomRight);
+      this.planeMesh.geometry.verticesNeedUpdate = true;
+
+      // Lines
+      this.lineSegments.geometry.dispose();
+      this.lineSegments.geometry = new THREE.EdgesGeometry(
+        this.planeMesh.geometry
+      );
     },
     applyTransform() {
-      const srcPts = this.cornerMeshes.reduce((points, mesh) => {
-        return [...points, mesh.position.x, mesh.position.y];
+      const srcPts = this.positions.reduce((points, { x, y }) => {
+        return [...points, x, y];
       }, []);
 
       // Destination points - this is the four corners of the visible viewport (bottom left, bottom right, top right, top left)
@@ -188,7 +199,7 @@ export default {
       this.previewMesh.matrixAutoUpdate = false;
     },
     render() {
-      this.updatePosition();
+      this.syncPositions();
       this.applyTransform();
 
       this.rendererOfOriginal.render(
