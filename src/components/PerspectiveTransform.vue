@@ -61,8 +61,11 @@ export default {
     this.createCornerMesh();
     this.createPlaneMesh();
     this.createHelper();
-    this.createTweakPane();
     this.render();
+
+    if (process.env.NODE_ENV === "development") {
+      this.createTweakPane();
+    }
   },
   methods: {
     createRenderer() {
