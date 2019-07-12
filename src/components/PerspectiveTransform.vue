@@ -35,10 +35,10 @@ export default {
     },
     cornerMeshes: [],
     positions: [
-      new THREE.Vector3(-100, -100, 1),
-      new THREE.Vector3(100, -100, 1),
-      new THREE.Vector3(100, 100, 1),
-      new THREE.Vector3(-100, 100, 1)
+      new THREE.Vector3(-100, 100, 1), // top-left
+      new THREE.Vector3(100, 100, 1), // top-right
+      new THREE.Vector3(100, -100, 1), // bottom-right
+      new THREE.Vector3(-100, -100, 1) // bottom-left
     ],
     planeMesh: null,
     lineSegments: null
@@ -48,8 +48,8 @@ export default {
       return {
         topLeft: this.positions[3],
         topRight: this.positions[2],
-        bottomLeft: this.positions[0],
-        bottomRight: this.positions[1]
+        bottomRight: this.positions[1],
+        bottomLeft: this.positions[0]
       };
     }
   },
@@ -188,10 +188,10 @@ export default {
 
       // prettier-ignore
       const destPts = [
-        -w, -h, // bottom left
-        w, -h, // bottom right
-        w, h, // top right
-        -w, h // top left
+        -w, h, // top-left
+        w, h, // top-right
+        w, -h, // bottom-right
+        -w, -h // bottom-left
       ];
 
       // Apply the transform to the preview image mesh
