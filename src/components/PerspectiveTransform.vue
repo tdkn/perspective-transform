@@ -44,7 +44,7 @@ export default {
     lineSegments: null
   }),
   computed: {
-    namedPosition() {
+    namedPositions() {
       return {
         topLeft: this.positions[3],
         topRight: this.positions[2],
@@ -156,7 +156,12 @@ export default {
       this.sceneOfOriginal.add(this.lineSegments);
     },
     syncPositions() {
-      const { topLeft, topRight, bottomLeft, bottomRight } = this.namedPosition;
+      const {
+        topLeft,
+        topRight,
+        bottomLeft,
+        bottomRight
+      } = this.namedPositions;
 
       // Positions
       this.cornerMeshes.forEach((mesh, index) => {
@@ -177,7 +182,7 @@ export default {
       );
     },
     applyTransform() {
-      const srcPts = this.positions.reduce((points, { x, y }) => {
+      const src = this.positions.reduce((points, { x, y }) => {
         return [...points, x, y];
       }, []);
 
@@ -187,7 +192,7 @@ export default {
       const h = this.$refs.original.height / 2;
 
       // prettier-ignore
-      const destPts = [
+      const dest = [
         -w, h, // top-left
         w, h, // top-right
         w, -h, // bottom-right
@@ -195,7 +200,7 @@ export default {
       ];
 
       // Apply the transform to the preview image mesh
-      this.previewMesh.matrix = getPerspectiveTransform(srcPts, destPts);
+      this.previewMesh.matrix = getPerspectiveTransform(src, dest);
       this.previewMesh.matrixAutoUpdate = false;
     },
     render() {
