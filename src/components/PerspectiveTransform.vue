@@ -185,14 +185,28 @@ export default {
       );
     },
     applyTransform() {
-      const src = this.positions.reduce((points, { x, y }) => {
-        return [...points, x, y];
-      }, []);
+      const src = this.positions.reduce(
+        (points, { x, y }) => [...points, x, y],
+        []
+      );
 
-      // Destination points - this is the four corners of the visible viewport (bottom left, bottom right, top right, top left)
-      // These are half the width & height because the origin is at the center
-      const w = this.$refs.original.width / 2;
-      const h = this.$refs.original.height / 2;
+      const {
+        topLeft,
+        topRight,
+        bottomLeft,
+        bottomRight
+      } = this.namedPositions;
+
+      // Compute mean height and width from four corner vertices.
+      const height = Math.ceil(
+        (topLeft.distanceTo(bottomLeft) + topRight.distanceTo(bottomRight)) / 2
+      );
+      const width = Math.ceil(
+        (topLeft.distanceTo(topRight) + bottomLeft.distanceTo(bottomRight)) / 2
+      );
+
+      const w = width / 2;
+      const h = height / 2;
 
       // prettier-ignore
       const dest = [
