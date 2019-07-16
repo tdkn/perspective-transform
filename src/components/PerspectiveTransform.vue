@@ -60,7 +60,7 @@ export default {
     this.createImageMesh();
     this.createCornerMesh();
     this.createPlaneMesh();
-    this.createHelper();
+    this.addInteraction();
     this.render();
 
     if (process.env.NODE_ENV === "development") {
@@ -218,7 +218,7 @@ export default {
 
       requestAnimationFrame(this.render);
     },
-    createHelper() {
+    addInteraction() {
       // DragControls
       new DragControls(
         this.cornerMeshes,
